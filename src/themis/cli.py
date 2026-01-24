@@ -13,6 +13,7 @@ from themis.reporting.report_json import write_json_report
 from themis.reporting.report_md import write_markdown_report
 from themis.contracts.infer_contract import infer_contract_from_path
 from themis.contracts.contract_writer import write_contract_yaml
+from themis.datasources.factory import make_datasource
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -33,13 +34,14 @@ def _read_input(path: Path) -> pl.DataFrame:
 # 
 def cmd_validate(args: argparse.Namespace) -> int:
     contract_path = Path(args.contract)
-    input_path = Path(args.input)
     out_dir = Path(args.out)
+    input_str = str(args.input)
 
     out_dir.mkdir(parents=True, exist_ok=True)
 
     contract = load_contract(contract_path)
-    df = _read_input(input_path)
+    ds = make_datasource(input_str)
+    df = ds.read()
 
     run, df_clean, df_quarantine = validate(df, contract)
     write_outputs(df_clean, df_quarantine, out_dir)
