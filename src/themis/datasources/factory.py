@@ -5,6 +5,7 @@ from urllib.parse import urlparse
 
 from themis.datasources.base import DataSource
 from themis.datasources.files import FileDataSource
+from themis.datasources.duckdb_source import from_duckdb_uri
 
 
 def make_datasource(input_str: str) -> DataSource:
@@ -25,7 +26,6 @@ def make_datasource(input_str: str) -> DataSource:
         return FileDataSource(p)
 
     if scheme == "duckdb":
-        # placeholder
-        raise ValueError("DuckDB datasource not implemented yet")
+        return from_duckdb_uri(input_str)
 
     raise ValueError(f"Unsupported input scheme: {scheme}")

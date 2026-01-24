@@ -1,0 +1,97 @@
+name: Themis Quality Gate
+
+on:
+  pull_request:
+  push:
+    branches: ["main"]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Themis
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Validate contracts/examples against examples/data
+        run: |
+          set -euo pipefail
+
+          OUT_ROOT="out_ci"
+          rm -rf "$OUT_ROOT"
+          mkdir -p "$OUT_ROOT"
+
+          shopt -s nullglob
+          for contract in contracts/examples/*.yml contracts/examples/*.yaml; do
+            echo "==> Contract: $contract"
+
+            dataset=$(python -c "import yaml; print(yaml.safe_load(open('$contract'))['dataset_name'])")
+            echo "    dataset_name: $dataset"
+
+            input_csv="examples/data/${dataset}.csv"
+            input_parquet="examples/data/${dataset}.parquet"
+
+            if [ -f "$input_csv" ]; then
+              input="$input_csv"
+            elif [ -f "$input_parquet" ]; then
+              input="$input_parquet"
+            else
+              echo "    ERROR: No input found for ${dataset}. Expected ${input_csv} or ${input_parquet}"
+              exit 1
+            fi
+
+            echo "    input: $input"
+            themis validate --contract "$contract" --input "$input" --out "$OUT_ROOT/${dataset}/"
+          done
+
+      - name: Upload CI reports (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: themis-ci
+          path: out_ci/
+          if-no-files-found: ignore
+
+  negative-tests:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Themis
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Negative test (bad dataset should fail)
+        run: |
+          set -euo pipefail
+          themis validate \
+            --contract contracts/examples/fct_observations.yml \
+            --input examples/data/fct_observations_bad.csv \
+            --out out_ci_negative/
+
+      - name: Upload negative reports (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: themis-ci-negative
+          path: out_ci_negative/
+          if-no-files-found: ignore

@@ -47,3 +47,6 @@ examples/data/*.csv~
 *.tmp
 *.swp
 
+out_ci/
+out_ci_negative/
+out_*/
