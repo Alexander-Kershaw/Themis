@@ -1,0 +1,32 @@
+dataset_name: fct_observations_bad
+primary_key: []
+columns:
+- name: station_id
+  dtype: string
+  required: true
+- name: ts
+  dtype: datetime
+  required: true
+- name: t2m_c
+  dtype: float
+  required: true
+  suggested_min: 4.2
+  suggested_max: 5.0
+- name: wind_ms
+  dtype: float
+  required: true
+  suggested_min: 5.0
+  suggested_max: 6.8
+rules:
+  not_null:
+  - station_id
+  - ts
+  - t2m_c
+  - wind_ms
+severity:
+  schema_required_columns: error
+  not_null: error
+  uniqueness: error
+  ranges: error
+  allowed_values: error
+  regex: warn

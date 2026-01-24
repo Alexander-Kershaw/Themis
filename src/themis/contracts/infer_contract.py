@@ -161,25 +161,25 @@ def infer_contract_from_df(
                             # trim one value from each tail
                             k = 1
                             if n > 2 * k:
-                                c["min"] = float(vals[k])
-                                c["max"] = float(vals[-k - 1])
+                                c["suggested_min"] = float(vals[k])
+                                c["suggested_max"] = float(vals[-k - 1])
                             else:
-                                c["min"] = float(min(vals))
-                                c["max"] = float(max(vals))
+                                c["suggested_min"] = float(min(vals))
+                                c["suggested_max"] = float(max(vals))
 
                         # Smallish datasets -> use wider quantiles
                         elif n < 100:
                             lo = sn.quantile(0.10, interpolation="linear")
                             hi = sn.quantile(0.90, interpolation="linear")
-                            c["min"] = float(lo)
-                            c["max"] = float(hi)
+                            c["suggested_min"] = float(lo)
+                            c["suggested_max"] = float(hi)
 
                         # Larger datasets -> robust quantiles
                         else:
                             lo = sn.quantile(0.01, interpolation="linear")
                             hi = sn.quantile(0.99, interpolation="linear")
-                            c["min"] = float(lo)
-                            c["max"] = float(hi)
+                            c["suggested_min"] = float(lo)
+                            c["suggested_max"] = float(hi)
 
                         pass
                 except Exception:
