@@ -56,6 +56,25 @@ def _polars_dtype_to_contract(dtype: pl.DataType) -> str:
     return "string"
 
 
+def _looks_like_datetime(s: pl.Series, min_parse_rate: float = 0.9, sample_n: int = 200) -> bool:
+
+    if s.len() == 0:
+        return False
+
+    ss = s.drop_nulls()
+    if ss.len() == 0:
+        return False
+
+    ss = ss.head(sample_n).cast(pl.Utf8)
+
+    # parse timestamps; unparseable become null when strict=False
+    parsed = ss.str.strptime(pl.Datetime, strict=False)
+
+    ok = int(parsed.is_not_null().sum())
+    rate = ok / float(ss.len())
+    return rate >= min_parse_rate
+
+
 def _maybe_regex_for_string(s: pl.Series) -> Optional[str]:
 
     try:
@@ -102,9 +121,19 @@ def infer_contract_from_df(
         nulls = int(s.null_count())
         null_frac = nulls / total
 
+        dtype_str = _polars_dtype_to_contract(dtype)
+
+        # Polars might see datetime as string, so try parsing to datetime
+        if dtype_str == "string":
+            try:
+                if _looks_like_datetime(s):
+                    dtype_str = "datetime"
+            except Exception:
+                pass
+
         c: Dict[str, Any] = {
             "name": name,
-            "dtype": _polars_dtype_to_contract(dtype),
+            "dtype": dtype_str,
         }
 
         required = _should_be_required(null_frac, required_null_frac_threshold)
