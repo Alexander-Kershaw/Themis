@@ -1,21 +1,34 @@
 dataset_name: fct_observations
 primary_key: [station_id, ts]
+
 columns:
   - name: station_id
     dtype: string
     required: true
+    regex: "^[A-Z]{4}$"
+
   - name: ts
     dtype: datetime
     required: true
+
   - name: t2m_c
     dtype: float
     required: true
+    min: -50
+    max: 60
+
   - name: wind_ms
     dtype: float
     required: false
+    min: 0
+    max: 80
+
 rules:
   uniqueness: [station_id, ts]
   not_null: [station_id, ts, t2m_c]
+
 severity:
   uniqueness: error
   not_null: error
+  ranges: error
+  regex: warn
