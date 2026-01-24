@@ -22,6 +22,7 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
+include = ["themis*"]
 
 [project.optional-dependencies]
 duckdb = ["duckdb>=1.0.0", "pyarrow>=14.0.0"]
