@@ -132,3 +132,27 @@ def test_regex_warn_does_not_quarantine():
     assert quar.height == 0
     assert clean.height == 2
     assert clean["__themis_warn_reasons__"].to_list() == ["", "regex"]
+
+
+def test_allowed_values_quarantines_invalid_values():
+    contract = dict(BASE_CONTRACT)
+    contract["columns"] = [
+        {**c, "allowed_values": ["ABCD", "EFGH"]} if c["name"] == "station_id" else c
+        for c in contract["columns"]
+    ]
+
+    df = pl.DataFrame(
+        {
+            "station_id": ["ABCD", "WXYZ"],
+            "ts": ["2026-01-01T00:00:00Z", "2026-01-01T01:00:00Z"],
+            "t2m_c": [4.2, 5.0],
+            "wind_ms": [7.1, 6.8],
+        }
+    )
+
+    run, clean, quar = validate(df, contract)
+
+    assert run.error_failed is True
+    assert clean.height == 1
+    assert quar.height == 1
+    assert "allowed_values" in quar["__themis_error_reasons__"].to_list()[0]
