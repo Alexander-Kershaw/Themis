@@ -9,6 +9,7 @@ import polars as pl
 from themis.contracts.loader import load_contract
 from themis.validate.validator import validate
 from themis.quarantine.sink import write_outputs
+from themis.reporting.report_json import write_json_report
 
 # Read input file (check if file exists, is csv/parquet, or unsupported format)
 def _read_input(path: Path) -> pl.DataFrame:
@@ -36,6 +37,9 @@ def cmd_validate(args: argparse.Namespace) -> int:
 
     run, df_clean, df_quarantine = validate(df, contract)
     write_outputs(df_clean, df_quarantine, out_dir)
+
+    report_path = write_json_report(run, df_clean, df_quarantine, out_dir)
+    print(f"JSON report: {report_path}")
 
     summary = (
         f"Dataset: {run.dataset_name}\n"
