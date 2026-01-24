@@ -83,10 +83,22 @@ jobs:
       - name: Negative test (bad dataset should fail)
         run: |
           set -euo pipefail
+
+          set +e
           themis validate \
             --contract contracts/examples/fct_observations.yml \
             --input examples/data/fct_observations_bad.csv \
             --out out_ci_negative/
+          code=$?
+          set -e
+
+          if [ "$code" -eq 2 ]; then
+            echo "Expected failure (exit 2)."
+            exit 0
+          fi
+
+          echo "Unexpected exit code: $code (expected 2)"
+          exit 1
 
       - name: Upload negative reports (always)
         if: always()
