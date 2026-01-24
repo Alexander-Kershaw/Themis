@@ -33,3 +33,5 @@ class ValidationRun:
     error_failed: bool
     rule_results: List[RuleResult]
     quarantine_reason_col: str = "__themis_error_reasons__"
+    warn_reason_col: str = "__themis_warn_reasons__"
+
