@@ -104,7 +104,7 @@ def infer_contract_from_df(
     required_null_frac_threshold: float = 0.0,
     allowed_values_max_cardinality: int = 20,
     allowed_values_max_frac: float = 0.05,
-    suggest_ranges: bool = True,
+    range_mode: str = "p01p99",  # "p01p99" | "minmax" | "none"
     suggest_allowed_values: bool = True,
     suggest_regex: bool = True,
     max_regex_sample: int = 200,
@@ -143,15 +143,48 @@ def infer_contract_from_df(
             not_null_cols.append(name)
 
         # Range suggestions for numeric columns
-        if suggest_ranges and c["dtype"] in {"int", "float"}:
-            # Use drop_nulls so min/max exist
+        if c["dtype"] in {"int", "float"} and range_mode != "none":
             sn = s.drop_nulls()
             if sn.len() > 0:
                 try:
-                    c["min"] = float(sn.min())
-                    c["max"] = float(sn.max())
+                    if range_mode == "minmax":
+                        c["min"] = float(sn.min())
+                        c["max"] = float(sn.max())
+                    
+                    # Adaptive range infereance (small data -> wider quantiles, larger data -> more constricted quantiles)
+                    elif range_mode == "p01p99":
+                        n = sn.len()
+
+                        # Tiny datasets: quantiles are too coarse so using trimmed bounds instead.
+                        if n < 20:
+                            vals = sorted([float(x) for x in sn.to_list()])
+                            # trim one value from each tail
+                            k = 1
+                            if n > 2 * k:
+                                c["min"] = float(vals[k])
+                                c["max"] = float(vals[-k - 1])
+                            else:
+                                c["min"] = float(min(vals))
+                                c["max"] = float(max(vals))
+
+                        # Smallish datasets -> use wider quantiles
+                        elif n < 100:
+                            lo = sn.quantile(0.10, interpolation="linear")
+                            hi = sn.quantile(0.90, interpolation="linear")
+                            c["min"] = float(lo)
+                            c["max"] = float(hi)
+
+                        # Larger datasets -> robust quantiles
+                        else:
+                            lo = sn.quantile(0.01, interpolation="linear")
+                            hi = sn.quantile(0.99, interpolation="linear")
+                            c["min"] = float(lo)
+                            c["max"] = float(hi)
+
+                        pass
                 except Exception:
                     pass
+
 
         # allowed_values suggestions 
         if suggest_allowed_values:

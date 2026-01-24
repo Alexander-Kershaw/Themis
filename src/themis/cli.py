@@ -77,6 +77,7 @@ def cmd_sample_contract(args: argparse.Namespace) -> int:
     contract = infer_contract_from_path(
         in_path,
         required_null_frac_threshold=float(args.required_null_threshold),
+        range_mode=str(args.range_mode),
     )
 
     out_path = out_dir / f"{contract['dataset_name']}.yml"
@@ -99,10 +100,9 @@ def build_parser() -> argparse.ArgumentParser:
     sc = sub.add_parser("sample-contract", help="Generate a starter contract YAML from data")
     sc.add_argument("--from-data", required=True, help="Path to input CSV/Parquet")
     sc.add_argument("--out", required=True, help="Output directory for generated contract")
-    sc.add_argument("--required-null-threshold", type=float, default=0.0,
-                    help="Null fraction threshold for required columns (default: 0.0)")
+    sc.add_argument("--required-null-threshold", type=float, default=0.0, help="Null fraction threshold for required columns (default: 0.0)")
+    sc.add_argument("--range-mode", choices=["p01p99", "minmax", "none"], default="p01p99", help="How to suggest numeric ranges: p01p99 (default), minmax, or none")
     sc.set_defaults(func=cmd_sample_contract)
-
 
     return p
 
