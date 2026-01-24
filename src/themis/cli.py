@@ -11,7 +11,10 @@ from themis.validate.validator import validate
 from themis.quarantine.sink import write_outputs
 from themis.reporting.report_json import write_json_report
 from themis.reporting.report_md import write_markdown_report
+from themis.contracts.infer_contract import infer_contract_from_path
+from themis.contracts.contract_writer import write_contract_yaml
 from datetime import datetime, timezone
+from pathlib import Path
 
 
 # Read input file (check if file exists, is csv/parquet, or unsupported format)
@@ -65,6 +68,23 @@ def cmd_validate(args: argparse.Namespace) -> int:
     # 2 if quaratine has rows else 0 (clean)
     return 2 if run.error_failed else 0
 
+def cmd_sample_contract(args: argparse.Namespace) -> int:
+
+    in_path = Path(args.from_data)
+    out_dir = Path(args.out)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    contract = infer_contract_from_path(
+        in_path,
+        required_null_frac_threshold=float(args.required_null_threshold),
+    )
+
+    out_path = out_dir / f"{contract['dataset_name']}.yml"
+    write_contract_yaml(contract, out_path)
+
+    print(f"Generated contract: {out_path}")
+    return 0
+
 
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="themis", description="Themis: data contracts and quality gates")
@@ -75,6 +95,14 @@ def build_parser() -> argparse.ArgumentParser:
     v.add_argument("--input", required=True, help="Path to input CSV/Parquet")
     v.add_argument("--out", required=True, help="Output directory")
     v.set_defaults(func=cmd_validate)
+
+    sc = sub.add_parser("sample-contract", help="Generate a starter contract YAML from data")
+    sc.add_argument("--from-data", required=True, help="Path to input CSV/Parquet")
+    sc.add_argument("--out", required=True, help="Output directory for generated contract")
+    sc.add_argument("--required-null-threshold", type=float, default=0.0,
+                    help="Null fraction threshold for required columns (default: 0.0)")
+    sc.set_defaults(func=cmd_sample_contract)
+
 
     return p
 
