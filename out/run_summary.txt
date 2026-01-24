@@ -1,4 +1,0 @@
-Loaded contract for dataset: fct_observations
-Primary key: ['station_id', 'ts']
-Rows: 3, Columns: 4
-Input: fct_observations.csv

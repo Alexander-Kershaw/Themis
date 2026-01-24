@@ -8,7 +8,7 @@ import polars as pl
 
 from themis.contracts.loader import load_contract
 
-# Read input file (check if exists, is csv, is parquet, or unsupported)
+# Read input file (check if file exists, is csv/parquet, or unsupported format)
 def _read_input(path: Path) -> pl.DataFrame:
     if not path.exists():
         raise FileNotFoundError(f"Input not found: {path}")
@@ -21,7 +21,7 @@ def _read_input(path: Path) -> pl.DataFrame:
 
     raise ValueError(f"Unsupported input format: {suffix} (expected .csv or .parquet)")
 
-# Validate the reading of the input, giving a summary of data contract
+
 def cmd_validate(args: argparse.Namespace) -> int:
     contract_path = Path(args.contract)
     input_path = Path(args.input)
@@ -32,7 +32,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
     contract = load_contract(contract_path)
     df = _read_input(input_path)
 
-    # Small summary to check if validation is working
+    # Summary of inputed csv/parquet
     run_summary = (
         f"Loaded contract for dataset: {contract['dataset_name']}\n"
         f"Primary key: {contract.get('primary_key')}\n"
@@ -57,7 +57,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     return p
 
-# initiation and exiting logic
+
 def main() -> None:
     parser = build_parser()
     args = parser.parse_args()

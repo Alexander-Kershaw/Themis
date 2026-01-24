@@ -5,7 +5,7 @@ from typing import Any, Dict
 
 import yaml
 
-# Load data contract (to check input csv/parquet against)
+
 def load_contract(path: Path) -> Dict[str, Any]:
     if not path.exists():
         raise FileNotFoundError(f"Contract not found: {path}")
