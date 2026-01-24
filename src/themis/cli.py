@@ -10,6 +10,9 @@ from themis.contracts.loader import load_contract
 from themis.validate.validator import validate
 from themis.quarantine.sink import write_outputs
 from themis.reporting.report_json import write_json_report
+from themis.reporting.report_md import write_markdown_report
+from datetime import datetime, timezone
+
 
 # Read input file (check if file exists, is csv/parquet, or unsupported format)
 def _read_input(path: Path) -> pl.DataFrame:
@@ -38,8 +41,16 @@ def cmd_validate(args: argparse.Namespace) -> int:
     run, df_clean, df_quarantine = validate(df, contract)
     write_outputs(df_clean, df_quarantine, out_dir)
 
-    report_path = write_json_report(run, df_clean, df_quarantine, out_dir)
+    # Timestamp to align md and JSON reports for same run
+    run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
+    # Write JSON report
+    report_path = write_json_report(run, df_clean, df_quarantine, out_dir, run_id=run_id)
     print(f"JSON report: {report_path}")
+
+    # Write markdown report
+    md_path = write_markdown_report(run, df_clean, df_quarantine, out_dir, run_id=run_id)
+    print(f"MD report: {md_path}")
 
     summary = (
         f"Dataset: {run.dataset_name}\n"
