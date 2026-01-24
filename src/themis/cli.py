@@ -7,6 +7,8 @@ from pathlib import Path
 import polars as pl
 
 from themis.contracts.loader import load_contract
+from themis.validate.validator import validate
+from themis.quarantine.sink import write_outputs
 
 # Read input file (check if file exists, is csv/parquet, or unsupported format)
 def _read_input(path: Path) -> pl.DataFrame:
@@ -21,7 +23,7 @@ def _read_input(path: Path) -> pl.DataFrame:
 
     raise ValueError(f"Unsupported input format: {suffix} (expected .csv or .parquet)")
 
-
+# 
 def cmd_validate(args: argparse.Namespace) -> int:
     contract_path = Path(args.contract)
     input_path = Path(args.input)
@@ -32,17 +34,21 @@ def cmd_validate(args: argparse.Namespace) -> int:
     contract = load_contract(contract_path)
     df = _read_input(input_path)
 
-    # Summary of inputed csv/parquet
-    run_summary = (
-        f"Loaded contract for dataset: {contract['dataset_name']}\n"
-        f"Primary key: {contract.get('primary_key')}\n"
-        f"Rows: {df.height}, Columns: {df.width}\n"
-        f"Input: {input_path.name}\n"
-    )
+    run, df_clean, df_quarantine = validate(df, contract)
+    write_outputs(df_clean, df_quarantine, out_dir)
 
-    (out_dir / "run_summary.txt").write_text(run_summary, encoding="utf-8")
-    print(run_summary)
-    return 0
+    summary = (
+        f"Dataset: {run.dataset_name}\n"
+        f"Total: {run.total_rows}\n"
+        f"Clean: {df_clean.height}\n"
+        f"Quarantine: {df_quarantine.height}\n"
+        f"Error failed: {run.error_failed}\n"
+    )
+    (out_dir / "run_summary.txt").write_text(summary, encoding="utf-8")
+    print(summary)
+
+    # 2 if quaratine has rows else 0 (clean)
+    return 2 if run.error_failed else 0
 
 
 def build_parser() -> argparse.ArgumentParser:
