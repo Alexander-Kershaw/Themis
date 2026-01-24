@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any, Dict
+from themis.contracts.normalize import normalize_contract
 
 import yaml
 
@@ -19,4 +20,4 @@ def load_contract(path: Path) -> Dict[str, Any]:
     if "columns" not in data:
         raise ValueError("Contract missing required field: columns")
 
-    return data
+    return normalize_contract(data)
