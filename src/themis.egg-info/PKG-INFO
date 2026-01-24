@@ -1,0 +1,8 @@
+Metadata-Version: 2.4
+Name: themis
+Version: 0.1.0
+Summary: Engine-agnostic data contracts + quality gates + quarantine
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: polars>=0.20.0
+Requires-Dist: pyyaml>=6.0.1
