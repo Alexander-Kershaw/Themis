@@ -43,7 +43,14 @@ def cmd_validate(args: argparse.Namespace) -> int:
     ds = make_datasource(input_str)
     df = ds.read()
 
-    run, df_clean, df_quarantine = validate(df, contract)
+    run, df_clean, df_quarantine = validate(
+        df,
+        contract,
+        dtype_mode=str(args.dtype_mode),
+        coerce_dtypes=bool(args.coerce_dtypes),
+    )
+
+    # write clean/quarantine datasets
     write_outputs(df_clean, df_quarantine, out_dir)
 
     # Timestamp to align md and JSON reports for same run
@@ -97,6 +104,8 @@ def build_parser() -> argparse.ArgumentParser:
     v.add_argument("--contract", required=True, help="Path to contract YAML")
     v.add_argument("--input", required=True, help="Path to input CSV/Parquet")
     v.add_argument("--out", required=True, help="Output directory")
+    v.add_argument("--dtype-mode", choices=["off", "warn", "error"], default="off")
+    v.add_argument("--coerce-dtypes", action="store_true")
     v.set_defaults(func=cmd_validate)
 
     sc = sub.add_parser("sample-contract", help="Generate a starter contract YAML from data")

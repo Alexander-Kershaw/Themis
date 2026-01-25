@@ -7,6 +7,7 @@ import polars as pl
 from themis.contracts.normalize import required_columns
 from themis.validate.results import RuleResult, ValidationRun
 from themis.validate.rules import check_ranges, check_allowed_values, check_regex
+from themis.validate.dtypes import apply_dtype_policy
 
 
 def _severity(contract: Dict[str, Any], rule_name: str, default: str = "error") -> str:
@@ -113,7 +114,7 @@ ValidationRun is built
 ------------------------------------------------------------------------------------------------
 """
 
-def validate(df: pl.DataFrame, contract: Dict[str, Any]) -> tuple[ValidationRun, pl.DataFrame, pl.DataFrame]:
+def validate(df: pl.DataFrame, contract: Dict[str, Any], dtype_mode:str = "off", coerce_dtypes: bool = False) -> tuple[ValidationRun, pl.DataFrame, pl.DataFrame]:
     dataset_name = str(contract["dataset_name"])
     total = df.height
     rule_results: List[RuleResult] = []
@@ -139,7 +140,56 @@ def validate(df: pl.DataFrame, contract: Dict[str, Any]) -> tuple[ValidationRun,
         )
         return run, df_out.head(0), df_out
 
-    # 2) not_null
+
+    # 2) Scheme dtypes with optional coercion
+    df2, dtype_issues, dtype_failed = apply_dtype_policy(
+        df,
+        contract,
+        dtype_mode=dtype_mode,
+        coerce=coerce_dtypes,
+    )
+    df = df2
+
+    # Record dtype rule result for report (if warn option active)
+    if dtype_mode.lower() != "off":
+        severity = "warn" if dtype_mode.lower() == "warn" else "error"
+        r_dtype = RuleResult(
+            rule="schema_dtypes",
+            severity=severity,
+            passed=(not dtype_failed) if severity == "error" else True,
+            details={
+                "issues": [
+                    {
+                        "column": i.column,
+                        "expected": i.expected,
+                        "actual": i.actual,
+                        "action": i.action,
+                        "note": i.note,
+                    }
+                    for i in dtype_issues
+                    if i.action != "ok"
+                ],
+                "coerce": bool(coerce_dtypes),
+            },
+        )
+        rule_results.append(r_dtype)
+
+        # If dtype mode is error and it failed -> quarantine everything
+        if dtype_mode.lower() == "error" and dtype_failed:
+            err_reasons = pl.Series(["schema_dtypes"] * total)
+            df_out = df.with_columns(
+                pl.lit(err_reasons).alias("__themis_error_reasons__"),
+                pl.lit(warn_reasons).alias("__themis_warn_reasons__"),
+            )
+            run = ValidationRun(
+                dataset_name=dataset_name,
+                total_rows=total,
+                error_failed=True,
+                rule_results=rule_results,
+            )
+            return run, df_out.head(0), df_out
+
+    # 3) not_null
     r_nn, nn_fail = check_not_null(df, contract)
     rule_results.append(r_nn)
     if nn_fail.any():
@@ -148,7 +198,7 @@ def validate(df: pl.DataFrame, contract: Dict[str, Any]) -> tuple[ValidationRun,
         else:
             warn_reasons = _append_reason_strings(warn_reasons, nn_fail, "not_null")
 
-    # 3) uniqueness
+    # 4) uniqueness
     r_uniq, uq_fail = check_uniqueness_pk(df, contract)
     rule_results.append(r_uniq)
     if uq_fail.any():
@@ -157,7 +207,8 @@ def validate(df: pl.DataFrame, contract: Dict[str, Any]) -> tuple[ValidationRun,
         else:
             warn_reasons = _append_reason_strings(warn_reasons, uq_fail, "uniqueness")
 
-    # 4) ranges
+
+    # 5) ranges
     r_rng, rng_fail = check_ranges(df, contract)
     rule_results.append(r_rng)
     if rng_fail.any():
@@ -166,7 +217,7 @@ def validate(df: pl.DataFrame, contract: Dict[str, Any]) -> tuple[ValidationRun,
         else:
             warn_reasons = _append_reason_strings(warn_reasons, rng_fail, "ranges")
 
-    # 5) allowed_values
+    # 6) allowed_values
     r_av, av_fail = check_allowed_values(df, contract)
     rule_results.append(r_av)
     if av_fail.any():
@@ -175,7 +226,7 @@ def validate(df: pl.DataFrame, contract: Dict[str, Any]) -> tuple[ValidationRun,
         else:
             warn_reasons = _append_reason_strings(warn_reasons, av_fail, "allowed_values")
 
-    # 6) regex
+    # 7) regex
     r_rx, rx_fail = check_regex(df, contract)
     rule_results.append(r_rx)
     if rx_fail.any():
